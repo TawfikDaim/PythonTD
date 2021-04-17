@@ -5,10 +5,11 @@ import websocket, requests, secrets, string, json
 from pprint import pprint
 
 # copy your (24-hour) token here
-TOKEN = 'eyJhbGciOiJFUzI1NiIsIng1dCI6IjhGQzE5Qjc0MzFCNjNFNTVCNjc0M0QwQTc5MjMzNjZCREZGOEI4NTAifQ.eyJvYWEiOiI3Nzc3NSIsImlzcyI6Im9hIiwiYWlkIjoiMTA5IiwidWlkIjoiNEFhfDNIUEk3S3JVeXxuZkxPYUl2dz09IiwiY2lkIjoiNEFhfDNIUEk3S3JVeXxuZkxPYUl2dz09IiwiaXNhIjoiRmFsc2UiLCJ0aWQiOiIyMDAyIiwic2lkIjoiNWMyNzA2YzRlZmQ3NDY1OGIzMWRjMWM3MDI4NTk3MmUiLCJkZ2kiOiI4NCIsImV4cCI6IjE2MTgzOTc1NDEifQ.LJMqQFgBs_wrICA4n-QzHpx8zgeXXsyvkeYZkAsRmxvO08olqxLlATBWXA9fEP3Eehpp3m6PvtJJPf7OQI8uwg'
+TOKEN = 'eyJhbGciOiJFUzI1NiIsIng1dCI6IjhGQzE5Qjc0MzFCNjNFNTVCNjc0M0QwQTc5MjMzNjZCREZGOEI4NTAifQ.eyJvYWEiOiI3Nzc3NSIsImlzcyI6Im9hIiwiYWlkIjoiMTA5IiwidWlkIjoiNEFhfDNIUEk3S3JVeXxuZkxPYUl2dz09IiwiY2lkIjoiNEFhfDNIUEk3S3JVeXxuZkxPYUl2dz09IiwiaXNhIjoiRmFsc2UiLCJ0aWQiOiIyMDAyIiwic2lkIjoiNmZjNGYwMmFkNjA4NDQyMDgwMjBlN2E1NDBkMTcyOTMiLCJkZ2kiOiI4NCIsImV4cCI6IjE2MTg2NjczMTAifQ.IUsYuER8taagbQnBUP5_RR4H8Lhu1Hsod_HG5Y9nPeIZDi5SEmBwSul_SHZ43VGuD9lo1tmXPZv7HFz6XZbYaA'
 
 # create a random string for context ID and reference ID
 CONTEXT_ID = secrets.token_urlsafe(10)
+CONTEXT_ID2 = secrets.token_urlsafe(10)
 REF_ID = secrets.token_urlsafe(5)
 
 
@@ -24,6 +25,15 @@ def on_message(ws, message):
     print(f'Received message {msg_id}, for subscription {ref_id}, with payload:')
     pprint(json.loads(payload))
 
+def on_message(ws, message2):
+    msg_id = int.from_bytes(message[0:8], byteorder='little')
+    ref_id_length = message[10]
+    ref_id = message[11:11+ref_id_length].decode()
+    payload_format = message[11+ref_id_length]
+    payload_size = int.from_bytes(message[12+ref_id_length:16+ref_id_length], byteorder='little')
+    payload = message[16+ref_id_length:16+ref_id_length+payload_size].decode()
+    print(f'Received message {msg_id}, for subscription {ref_id}, with payload:')
+    pprint(json.loads(payload))
 
 # handle incorrect token error
 def on_error(ws, error):
@@ -40,6 +50,19 @@ def on_open(ws):
     print('Websocket handshake successful, creating subscription to OpenAPI...')
 
     response = requests.post(
+        'https://gateway.saxobank.com/sim/openapi/trade/v1/infoprices/subscriptions',
+        headers={'Authorization': 'Bearer ' + TOKEN},
+        json={
+            "Arguments": {
+                "AssetType": "FxSpot",
+                "Uics": 42
+            },
+	        'ContextId': CONTEXT_ID,
+	        'ReferenceId': REF_ID
+        }
+    )
+
+    response2 = requests.post(
         'https://gateway.saxobank.com/sim/openapi/trade/v1/infoprices/subscriptions',
         headers={'Authorization': 'Bearer ' + TOKEN},
         json={
@@ -95,4 +118,14 @@ if __name__ == "__main__":
         on_open = on_open
     )
 
+    ws2 = websocket.WebSocketApp(
+        f'wss://streaming.saxobank.com/sim/openapi/streamingws/connect?ContextId={CONTEXT_ID2}',
+        header={'Authorization': f'Bearer {TOKEN}'},
+        on_message = on_message,
+        on_error = on_error,
+        on_close = on_close,
+        on_open = on_open
+    )
+
     ws.run_forever()
+    ws2.run_forever()

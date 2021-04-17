@@ -5,7 +5,7 @@ import websockets, asyncio, requests, secrets, string, json
 from pprint import pprint
 
 # copy your (24-hour) token here
-TOKEN = 'eyJhbGciOiJFUzI1NiIsIng1dCI6IjhGQzE5Qjc0MzFCNjNFNTVCNjc0M0QwQTc5MjMzNjZCREZGOEI4NTAifQ.eyJvYWEiOiI3Nzc3NSIsImlzcyI6Im9hIiwiYWlkIjoiMTA5IiwidWlkIjoiNEFhfDNIUEk3S3JVeXxuZkxPYUl2dz09IiwiY2lkIjoiNEFhfDNIUEk3S3JVeXxuZkxPYUl2dz09IiwiaXNhIjoiRmFsc2UiLCJ0aWQiOiIyMDAyIiwic2lkIjoiNWMyNzA2YzRlZmQ3NDY1OGIzMWRjMWM3MDI4NTk3MmUiLCJkZ2kiOiI4NCIsImV4cCI6IjE2MTgzOTc1NDEifQ.LJMqQFgBs_wrICA4n-QzHpx8zgeXXsyvkeYZkAsRmxvO08olqxLlATBWXA9fEP3Eehpp3m6PvtJJPf7OQI8uwg'
+TOKEN = 'eyJhbGciOiJFUzI1NiIsIng1dCI6IjhGQzE5Qjc0MzFCNjNFNTVCNjc0M0QwQTc5MjMzNjZCREZGOEI4NTAifQ.eyJvYWEiOiI3Nzc3NSIsImlzcyI6Im9hIiwiYWlkIjoiMTA5IiwidWlkIjoiNEFhfDNIUEk3S3JVeXxuZkxPYUl2dz09IiwiY2lkIjoiNEFhfDNIUEk3S3JVeXxuZkxPYUl2dz09IiwiaXNhIjoiRmFsc2UiLCJ0aWQiOiIyMDAyIiwic2lkIjoiNmZjNGYwMmFkNjA4NDQyMDgwMjBlN2E1NDBkMTcyOTMiLCJkZ2kiOiI4NCIsImV4cCI6IjE2MTg2NjczMTAifQ.IUsYuER8taagbQnBUP5_RR4H8Lhu1Hsod_HG5Y9nPeIZDi5SEmBwSul_SHZ43VGuD9lo1tmXPZv7HFz6XZbYaA'
 
 # create a random string for context ID and reference ID
 CONTEXT_ID = secrets.token_urlsafe(10)
@@ -13,6 +13,59 @@ REF_ID = secrets.token_urlsafe(5)
 
 
 def create_subscription(context_id, ref_id, token):
+  
+    response = requests.get(
+        'https://gateway.saxobank.com/sim/openapi/port/v1/balances/me',
+        headers={'Authorization': 'Bearer ' + token},
+    )
+    print (response.text)
+    # pprint(decode_message(response))
+
+    response = requests.get(
+         'https://gateway.saxobank.com/sim/openapi/port/v1/orders/me',
+          headers={'Authorization': 'Bearer ' + token},
+    )
+    print ('/n'),
+    pprint (response.text)
+  
+    response = requests.post(
+        'https://gateway.saxobank.com/sim/openapi/trade/v2/orders',
+        headers={'Authorization': 'Bearer ' + token},
+        json={
+            "Orders": [
+                {
+                "AccountKey": "4Aa|3HPI7KrUy|nfLOaIvw==",
+                "ManualOrder": True,
+                "Amount": 100000.0,
+                "AssetType": "FxSpot",
+                "BuySell": "Buy",
+                "OrderDuration": {
+                    "DurationType": "GoodTillCancel"
+            },
+            "OrderPrice": 130.7,
+            "OrderType": "Limit",
+            "Uic": 18
+            },
+            {
+            "AccountKey": "4Aa|3HPI7KrUy|nfLOaIvw==",
+            "Amount": 100000.0,
+            "ManualOrder": True,
+            "AssetType": "FxSpot",
+            "BuySell": "Buy",
+            "OrderDuration": {
+                "DurationType": "GoodTillCancel"
+            },
+            "OrderPrice": 132.2,
+            "OrderType": "Stop",
+            "Uic": 18
+            }
+        ],
+        "WithAdvice": False
+        }
+    )
+    print(response.status_code)
+    print(response.text)
+
     response = requests.post(
         'https://gateway.saxobank.com/sim/openapi/trade/v1/infoprices/subscriptions',
         headers={'Authorization': 'Bearer ' + token},
